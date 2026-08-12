@@ -15,8 +15,17 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-API = "http://export.arxiv.org/api/query"
+API = "https://export.arxiv.org/api/query"
 NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
+
+# Force UTF-8 on standard streams. Windows consoles default to GBK/CP936, and
+# printing accented author names or math symbols from abstracts then raises
+# UnicodeEncodeError, aborting the run before results are saved.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 
 def build_url(query: str, limit: int, years: int) -> str:
@@ -88,6 +97,12 @@ def main(argv=None):
         print("No results. Try a broader query or increase --years.", file=sys.stderr)
         return 1
 
+    # Save results to disk *before* printing, so a later failure (e.g. a console
+    # encoding issue) never loses the search results.
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as fh:
+            json.dump(entries, fh, ensure_ascii=False, indent=2)
+
     for i, paper in enumerate(entries, 1):
         journal = " | journal: {}".format(paper["journal_ref"]) if paper["journal_ref"] else ""
         authors = ", ".join(paper["authors"][:3]) + (" et al." if len(paper["authors"]) > 3 else "")
@@ -96,8 +111,6 @@ def main(argv=None):
         print()
 
     if args.json:
-        with open(args.json, "w", encoding="utf-8") as fh:
-            json.dump(entries, fh, ensure_ascii=False, indent=2)
         print("Saved JSON: {}".format(args.json), file=sys.stderr)
     return 0
 
