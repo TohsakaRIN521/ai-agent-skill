@@ -11,6 +11,12 @@ description: 为已完成主体（理论推导与数值分析）的论文初稿�
 - 任务只是填充：摘要、引言、正文中可引用的支撑段落、结论、致谢、参考文献。
 - 若用户实际要求修改推理/结论或从零写作，说明本 skill 不适用，并停止，不要强行执行。
 
+## 执行环境注意（DSH Agent）
+
+- 脚本依赖 Python 3 与网络（arXiv API 实测可用）；`verify_compile.py` 还要求 PATH 上有 latexmk（TeX Live / MiKTeX）。
+- 用 pwsh 执行脚本时，workdir 参数指向的目录必须已存在：先创建再使用，否则报误导性错误 `spawn C:\tool\node.exe ENOENT`（缺的是工作目录，不是 node.exe）。
+- 本部署的 web_fetch 工具默认关闭：需抓取具体期刊页面时，改用 `smart-web-fetch` skill 或脚本直连兜底。
+
 ## 工作流程
 
 ### 第 1 步：拆解初稿
