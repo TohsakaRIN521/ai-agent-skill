@@ -1,5 +1,5 @@
-# dsh-skill
-academic-paper-completion
+# dsh-skill academic-paper-completion 旨在完善已有理论计算与数值分析的skill
+
 此skill还能减少ai幻觉引用
 旨在完善论文而不是从零开始写论文,如果你写完了论文的理论分析与数值验证与结论,他能很快的完善全文,
 流程基于arxiv网站能够下载tex源码,同类型skill流程中基于arxiv的tex是最省token的,准确率最高的.(并非说我的是最好的,而是基于arxiv的tex的skill比其他pdf更好)
