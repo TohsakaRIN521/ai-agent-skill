@@ -1,4 +1,0 @@
-interface:
-  display_name: "arXiv Paper Completion & Ref Verification (EN)"
-  short_description: "Complete paper gaps, verify references, and safely edit paper LaTeX."
-  default_prompt: "Use $paper-completion-arxiv-en to complete missing paper sections, verify the existing references, or safely edit the paper LaTeX source."
