@@ -1,4 +1,0 @@
-interface:
-  display_name: "arXiv 论文补全与文献核验"
-  short_description: "补全论文缺失章节、核验参考文献真实性，并安全修改论文 tex。"
-  default_prompt: "Use $paper-completion-arxiv to complete missing paper sections, verify the existing references, or safely edit the paper LaTeX source."
