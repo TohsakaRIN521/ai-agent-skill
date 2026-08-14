@@ -1,6 +1,6 @@
 ---
 name: academic-paper-completion
-description: 为已完成主体（理论推导与数值分析）的论文初稿补全缺失章节：摘要、引言、正文支撑段落、结论、致谢与参考文献。流程：拆解初稿关键理论/公式/结论 → 检索 arXiv 近一年相关论文（前 40 篇）→ 联网确认期刊并按分区分类、由用户选择 3/5/10 篇 → 下载 TeX 源码 → 将相似理论/方法段落改写并正确引用后整合进初稿。同时支持：对论文存量参考文献逐条真实性核验（期刊/卷/页码/年份/作者联网比对），以及论文 tex 安全修改（备份→精确替换→读回验证→临时目录编译验证）。触发场景：「完善论文、补全论文、补写摘要/引言/结论、填充参考文献、核对/检查参考文献、修改论文tex」等请求，且论文主体已写完；不适用于修改推理过程、修改最终结论或从零撰写论文。
+description: 为已完成主体（理论推导与数值分析）的论文初稿补全缺失章节：摘要、引言、正文支撑段落、结论、致谢与参考文献。流程：拆解初稿关键理论/公式/结论 → 检索 arXiv 近一年相关论文（前 40 篇）→ 联网确认期刊并按分区分类、由用户选择 3/5/10 篇 → 下载 TeX 源码 → 将相似理论/方法段落改写并正确引用后整合进初稿。同时支持：对论文存量参考文献逐条真实性核验（期刊/卷/页码/年份/作者联网比对），参考文献格式批量转换（Crossref 按 DOI 补全文章标题、链接改为只包期刊信息、去除卷号加粗），以及论文 tex 安全修改（备份→精确替换→读回验证→临时目录编译验证）。触发场景：「完善论文、补全论文、补写摘要/引言/结论、填充参考文献、核对/检查参考文献、修改论文tex、参考文献格式/排版、补全参考文献标题」等请求，且论文主体已写完；不适用于修改推理过程、修改最终结论或从零撰写论文。
 ---
 
 # 学术论文补全（基于 arXiv）
@@ -15,7 +15,7 @@ description: 为已完成主体（理论推导与数值分析）的论文初稿�
 
 - 脚本依赖 Python 3 与网络（arXiv API 实测可用）；`verify_compile.py` 还要求 PATH 上有 latexmk（TeX Live / MiKTeX）。
 - 用 pwsh 执行脚本时，workdir 参数指向的目录必须已存在：先创建再使用，否则报误导性错误 `spawn C:\tool\node.exe ENOENT`（缺的是工作目录，不是 node.exe）。
-- 先尝试用本地的 web_fetch ,如果没有：需抓取具体期刊页面时，改用 `smart-web-fetch` skill 或脚本直连兜底。
+- 本部署的 web_fetch 工具默认关闭：需抓取具体期刊页面时，改用 `smart-web-fetch` skill 或脚本直连兜底。
 
 ## 工作流程
 
@@ -82,6 +82,24 @@ python scripts/download_arxiv_sources.py 2401.00001 2401.00002 --out work/tex_so
 4. 记录每条证据（DOI/ADS bibcode/官网链接），状态只分「✓ 真实 / 存疑 / 不实」三档，存疑与不实条目单独列出依据。
 5. 输出核对报告到工作目录（不写入论文目录），报告模板见 references/reference-verification-report.md。
 
+## 参考文献格式转换（批量格式化 / 补标题 / 换链接形式）
+
+适用：用户要求把 `\bibitem` 改为「作者, 标题, 期刊 卷, 页码 (年份).」形式、链接只包期刊信息（如 `\href{DOI}{Phys. Rev. A 82, 030103(R) (2010)}`）、为条目补全文章标题、去除卷号 `\textbf{}` 加粗等。典型输入是 `\bibitem{key} \href{DOI}{作者, 期刊 卷, 页码 (年份).}`（整条可点、无标题、卷号加粗）。
+
+流程：
+
+1. 预览（不改原文件）：`python scripts/ref_format.py <file.tex> --titles --out 新条目.txt`，检查输出是否符合目标格式。
+2. 人工核对新条目无误后应用：`python scripts/ref_format.py <file.tex> --titles --apply`。脚本自动做带时间戳备份并替换 thebibliography 块（幂等：对已转换文件重复运行保持原样）。
+3. 编译验证：运行 `scripts/verify_compile.py <file.tex>`（见下节）。
+
+要点：
+
+- 标题从 Crossref API 按 DOI 批量获取（`--titles`），远快于逐条 web 检索；网络抖动自动重试 3 次，失败条目 stderr 提示并跳过（无 DOI 的条目不取标题）。
+- Crossref 标题可能含 `<mml:math>` 或 `$$...$$` 数学标记（如 PT），脚本自动清理并修正粘连空格（`PT -symmetry`→`PT-symmetric`、`anti- PT`→`anti-PT`）；常见重音字符（ö、é 等）自动转 LaTeX 转义。
+- 选项：`--link {all,journal,none}` 控制链接范围（默认 journal 只包期刊信息）；`--keep-bold` 保留卷号加粗（默认去除）；`--no-bak` 应用时跳过备份（不推荐）。
+- 目标文件位于受保护目录（桌面、~/.codex 等）时，先取得写入授权。
+- 脚本识别期刊名的正则覆盖常见物理期刊（Phys. Rev. 系、Nat. Phys.、Adv. Phys.、Rev. Mod. Phys. 等）；无法识别期刊的条目原样保留；参考 arXiv 源码中已有的「作者, 标题, 期刊…」条目可直接对照格式。
+
 ## tex 安全修改与编译验证
 
 任何论文 .tex 修改都必须走以下流程：
@@ -90,11 +108,12 @@ python scripts/download_arxiv_sources.py 2401.00001 2401.00002 --out work/tex_so
 2. 精确替换：用 `scripts/patch_tex.py` 执行字符串替换（多组 old→new，自动校验每组出现次数、保留 CRLF/LF 换行、UTF-8-sig 读取、UTF-8 写回）。
 3. 读回验证：重新读取被改区域，核对替换结果与上下文。
 4. 编译验证：运行 `scripts/verify_compile.py <file.tex>`。脚本自动把 .tex 及 figures/ 等依赖复制到隔离临时目录，执行 `latexmk -pdf` 后检查日志中的 `LaTeX Error` / `!`、`Float too large`、`undefined` / `Undefined`、`Overfull` 并汇总结果；产出 PDF 只写临时目录，不覆盖论文目录。
+   - **Overfull 基线对比**：修改前先记录一次编译的 Overfull 数量与位置（脚本会输出每处超宽的行号与宽度）；修改后编译，**新增或变宽的 Overfull 必须定位并消除**，不得当「装饰性警告」忽略。常见来源与处理：新插入的长公式（拆行用 `aligned`/`split`、合并求和号 `\sum_{m,l=-∞}^{∞}`、微调负薄空格 `\!`；注意 `\frac` 堆叠分式通常比斜杠 `A/\omega_1` 更窄）、图片宽度超列宽（`\columnwidth`）、表格列宽（缩 `\tabcolsep`）。
 5. 目标文件位于受保护目录（桌面、~/.codex 等）时，先取得写入授权。
 
 ## 本科生场景（变体）
 
-- 作者为本科生时,并且是写毕业论文而不是投期刊时：第 2 步改为中国知网（https://www.cnki.net）按关键词检索；分类仍按期刊分区；CNKI 无 TeX 源码，跳过第 4 步下载脚本，直接以获取的 PDF 全文为素材、用 PDF 文本提取内容；其余步骤相同。
+- 作者为本科生时：第 2 步改为中国知网（https://www.cnki.net）按关键词检索；分类仍按期刊分区；CNKI 无 TeX 源码，跳过第 4 步下载脚本，直接以获取的 PDF 全文为素材、用 PDF 文本提取内容；其余步骤相同。
 
 ## 规范与边界
 

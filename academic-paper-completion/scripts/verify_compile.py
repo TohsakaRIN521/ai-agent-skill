@@ -108,6 +108,15 @@ def main(argv=None):
         for ln in problems[:12]:
             print("   ", ln)
 
+    if overfull:
+        print("\n--- Overfull boxes (line: width) ---")
+        for m in re.finditer(
+            r"Overfull \\hbox \((\d+\.?\d*)pt too wide\)"
+            r"(?: detected at line (\d+)| in paragraph at lines (\d+)--(\d+))", log):
+            width = m.group(1)
+            loc = m.group(2) if m.group(2) else f"{m.group(3)}--{m.group(4)}"
+            print(f"   line {loc}: {width}pt too wide")
+
     pages = re.search(r"Output written on .*\((\d+) pages?", log)
     page_str = ", {} pages".format(pages.group(1)) if pages else ""
 
