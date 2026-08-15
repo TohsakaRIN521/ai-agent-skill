@@ -3,8 +3,14 @@
 """Search arXiv (past N years) for papers related to given keywords.
 
 Prints a relevance-ranked list (default 40) with arXiv ID, title, authors,
-published date, journal reference (if present) and abstract snippet.
+published date, journal reference (if present), the paper's native DOI field
+(if the author filled it in) and abstract snippet.
 Optionally saves results as JSON for later steps.
+
+The native ``arxiv:doi`` field is the most reliable first source for the
+official DOI: it is filled in by the authors once the paper is published.
+It is NOT the same as ``journal_ref``, which is only a free-text string like
+"Phys. Rev. A 110, 023601 (2024)" and contains no DOI.
 """
 import argparse
 import datetime as dt
@@ -69,6 +75,9 @@ def parse_entries(xml_bytes: bytes):
             for a in entry.findall("atom:author", NS)
         ]
         journal_ref = entry.findtext("arxiv:journal_ref", default="", namespaces=NS)
+        # arxiv:doi is the native DOI field filled in by the authors once the
+        # paper is formally published; it is the most trustworthy DOI source.
+        doi = entry.findtext("arxiv:doi", default="", namespaces=NS)
         abstract = " ".join((entry.findtext("atom:summary", default="", namespaces=NS) or "").split())
         entries.append(
             {
@@ -77,6 +86,7 @@ def parse_entries(xml_bytes: bytes):
                 "authors": authors,
                 "published": published,
                 "journal_ref": journal_ref or None,
+                "doi": doi or None,
                 "abstract": abstract,
             }
         )
@@ -105,8 +115,9 @@ def main(argv=None):
 
     for i, paper in enumerate(entries, 1):
         journal = " | journal: {}".format(paper["journal_ref"]) if paper["journal_ref"] else ""
+        doi_info = " | DOI: {}".format(paper["doi"]) if paper.get("doi") else ""
         authors = ", ".join(paper["authors"][:3]) + (" et al." if len(paper["authors"]) > 3 else "")
-        print("[{:2}] {} - {}{}".format(i, paper["id"], paper["title"], journal))
+        print("[{:2}] {} - {}{}{}".format(i, paper["id"], paper["title"], journal, doi_info))
         print("     {} ({}) | {} ...".format(authors, paper["published"], paper["abstract"][:160]))
         print()
 
